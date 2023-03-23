@@ -39,25 +39,4 @@
 		{last_viewed}
 	[/last_viewed]
 	</div>
-	<script>
-	function changeSearch(obj) {
-			
-		if( $(obj).prop('checked') ) {
-				
-			setcookie('search_last_viewed', 1);
-			dle_do_search(dle_search_value);
-				
-		} else {
-				
-			setcookie('search_last_viewed', 0);
-			dle_do_search(dle_search_value);
-				
-		}
-		
-		$('#story').focus();
-	}
-	$(function(){
-		if( $('.search-result a').length ) setTimeout(function(){ $('.search-result a').addClass('visible') }, 300);
-	});
-	</script>
 </div>
