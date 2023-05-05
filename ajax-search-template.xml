@@ -80,6 +80,9 @@ if( $xfound AND count($xfields) ) {
 	$row['xfields_array'] = xfieldsdataload( $row['xfields'] );
 }
 
+$row['cats'] 		= explode( ',', $row['category'] );
+$row['category'] 	= intval( $row['category'] );
+
 $temp = $tpl->if_check($temp);
 		
 if( $xfound AND count($xfields) ) {
@@ -248,24 +251,9 @@ if( $xfound AND count($xfields) ) {
 		$temp = preg_replace( "'\\[xfgiven_{$preg_safe_name} image=\"(\d+)\"\\](.*?)\\[/xfgiven_{$preg_safe_name} image=\"(\d+)\"\\]'is", "", $temp );
 		$temp = preg_replace( "'\\[xfnotgiven_{$preg_safe_name} image=\"(\d+)\"\\]'i", "", $temp );
 		$temp = preg_replace( "'\\[/xfnotgiven_{$preg_safe_name} image=\"(\d+)\"\\]'i", "", $temp );	
-				
-		if ($config['image_lazy']) $xfieldsdata[$value[0]] = preg_replace_callback ( "#<(img|iframe)(.+?)>#i", "enable_lazyload", $xfieldsdata[$value[0]] );
-
-		if( $view_template == "rss" ) {
-			$xfieldsdata[$value[0]] = clear_rss_content ( $xfieldsdata[$value[0]] );
-		}
-				
+								
       	$temp = str_ireplace( "[xfvalue_{$value[0]}]", $xfieldsdata[$value[0]], $temp );
-	
-		if( $value[28] ) {
-			$xfields_in_news['[xfvalue_'.$value[0].']'] = $xfieldsdata[$value[0]];
-		}
-				
-		if( !$page_description ) {
-			if( ($value[3] == "text" OR $value[3] == "textarea") AND $xfieldsdata[$value[0]]) {
-				$all_xf_content[] = $xfieldsdata[$value[0]];
-			}	
-		}
+
 				
 		if ( preg_match( "#\\[xfvalue_{$preg_safe_name} limit=['\"](.+?)['\"]\\]#i", $temp, $matches ) ) {
           	$temp = str_ireplace( $matches[0], clear_content($xfieldsdata[$value[0]], $matches[1]), $temp );
@@ -401,15 +389,13 @@ if( $row['allow_rate'] ) {
 			<searchcode><![CDATA[$buffer .= "<a href=\"" . $full_link . "\"><span class=\"searchheading\">" . stripslashes( $title ) . "</span>";
 
 $buffer .= "<span>".$description."</span></a>";]]></searchcode>
-			<replacecode><![CDATA[$title = stripslashes( $title );
-
-$temp 				= str_replace( '[full-link]', "<a href=\"" . $full_link . "\" data-suggest=\"".$title."\">", $temp );
+			<replacecode><![CDATA[$temp 				= str_replace( '[full-link]', "<a href=\"" . $full_link . "\" data-suggest=\"".$title."\">", $temp );
 $temp 				= str_replace( '[/full-link]', "</a>", $temp );		
 $temp 				= preg_replace( "#\[is-static\](.*?)\[/is-static\]#is", "", $temp );
 $temp 				= preg_replace( "#\[is-short\]|\[/is-short\]#is", "", $temp );
 $temp 				= preg_replace( "#\[notfound\](.*?)\[/notfound\]#is", "", $temp );	
 $temp 				= str_replace( '{full-link}', $full_link, $temp );
-$temp 				= str_replace( '{title}', stripslashes( $title ), $temp );
+$temp 				= str_replace( '{title}', $title, $temp );
 $temp 				= str_replace( '{short-story}', $description, $temp );
 $item_template[] 	= $temp;]]></replacecode>
 			<enabled>1</enabled>
@@ -491,7 +477,6 @@ else $description = $row['short_story'];]]></replacecode>
 
 echo $buffer;]]></searchcode>
 			<replacecode><![CDATA[$tpl->set( '{search-link}', '<a href="'.$config['http_home_url'].'?do=search&amp;mode=advanced&amp;subaction=search&amp;story='.$query.'" class="extended-search">'.$lang['s_ffullstart'].'</a>' );
-$tpl->set( '{THEME}', $config['http_home_url'] . 'templates/' . $config['skin'] );
 
 if( $config['last_viewed'] ) {
 
@@ -558,7 +543,7 @@ HTML;
 }]]></searchcode>
 			<replacecode><![CDATA[if ($config['fast_search'] AND $user_group[$member_id['user_group']]['allow_search']) {
 
-	$onload_scripts[] = "Search.initialize(dle_min_search);";
+	$onload_scripts[] = "Search.init(dle_min_search);";
 
 }]]></replacecode>
 			<enabled>0</enabled>
