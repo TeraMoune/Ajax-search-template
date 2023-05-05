@@ -1,7 +1,7 @@
 var Search = {
 
 	result_id: 					'searchsuggestions',
-	button_class: 				'search-show',
+	button_class: 				false,
 	box_class: 					'search-box',
 	mask_class: 				'search-mask',
 	append_result_markup:		'quicksearch',
@@ -10,7 +10,7 @@ var Search = {
 	min_search: 				2,
 	search_result_area:      	false,
 	key_bind:					{ show: '\\', close: 'Escape', moveDown: 'ArrowDown', moveUp: 'ArrowUp', currClick: 'Enter' },
-	history:            		true,
+	history:            		false,
 	append_history_markup: 		false,
 	suggestionHistory: 			localStorage.getItem('searchSuggestionHistory') ? JSON.parse(localStorage.getItem('searchSuggestionHistory')) : [],
 	suggestionHistory_count: 	5,
