@@ -1,7 +1,7 @@
 var Search = {
 
 	result_id: 					'searchsuggestions',
-	button_class: 				false,
+	button_class: 				'search-show',
 	box_class: 					'search-box',
 	mask_class: 				'search-mask',
 	append_result_markup:		'quicksearch',
@@ -29,9 +29,20 @@ var Search = {
 	search_markup:				`<div class="search-box">
 									<div class="quicksearch">
 										<input placeholder="Поиск..." name="story" type="text">
-										<button id="clear-search" aria-label="left align" type="submit" style="display:none;"><svg class="icon icon--circle_cross"><use href="#icon--circle_cross"></use></svg></button>
+										<button id="clear-search" aria-label="left align" type="submit" style="display:none;"><svg class="icon icon--circle_cross" viewBox="0 0 24 24"><path d="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z"></path></svg></button>
 									</div>
 									<div class="search-mask"></div>
+								</div>`,
+	
+	search_result_wrapper:		`<div class="search-result-box">
+									<div class="search-result flex fl-wrap">
+										{search-result}
+										[notfound]<span class="notfound t-s15-7">{notfound}</span>[/notfound]
+									</div>
+									<div class="menu-search">
+										{search-link}
+										{last-viewed}
+									</div>
 								</div>`,
 
 	search_result_markup:		`<div id="searchsuggestions" class="style_search_results">
@@ -117,7 +128,7 @@ var Search = {
 
 		}
 
-		if( this.is_popup ) {
+		if( this.is_popup ) {		
 			
 			$('.'+this.mask_class).on("click", () => {
 				this.close();
@@ -299,8 +310,23 @@ var Search = {
 
 		clearInterval(this.search_delay);		
 		
-		$.post(dle_root + "engine/ajax/controller.php?mod=search", {query: string, user_hash: dle_login_hash}, (data) => {
+		$.post(dle_root + "engine/ajax/controller.php?mod=search", {query: string, user_hash: dle_login_hash}, (response) => {
 
+
+			let data = this.search_result_wrapper.replace('{search-result}', response.content)
+												 .replace('{search-link}', response.search_link)
+												 .replace('{last-viewed}', response.last_viewed);
+
+			if( response.status ) {
+	
+				data = data.replace(/\[notfound\].+?\[\/notfound\]/i, '');
+
+			} else {
+			
+				data = data.replace(/{notfound}/i, response.error).replace('[notfound]', '').replace('[/notfound]', '');
+
+			}
+				
 			//added search result
 			if( this.search_result_area ) {
 				$('#'+this.result_id).find('.'+this.search_result_area).html(data);
@@ -357,7 +383,7 @@ var Search = {
 
 			}
 
-		});
+		}, 'json');
 
 		this.search_value = string;		
 
