@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <dleplugin>
 	<name>Ajax search template</name>
-	<description>Добавляет возможность использовать шаблон [skin/modules/ajax-search.tpl] для ответа быстрого поиска. Имеет поддержку тегов доп. полей, картинок, рейтинга и условий.
-
+	<description>Модификация быстрого поиска.
 Дополнительно даёт возможность исключать просмотренные материалы.</description>
 	<icon></icon>
-	<version>0.0.2</version>
-	<dleversion>15.1</dleversion>
+	<version>0.0.3</version>
+	<dleversion>16.1</dleversion>
 	<versioncompare>greater</versioncompare>
 	<upgradeurl></upgradeurl>
 	<filedelete>1</filedelete>
@@ -24,423 +23,16 @@
 	<phpdelete><![CDATA[]]></phpdelete>
 	<notice><![CDATA[<p>@<a href="https://t.me/TeraMoune" target="_blank">TeraMoune</a></p>
 <details><summary style="color:#ff720e;font-weight:500" role="button">Click here!</summary>Дополнительные теги:
-[b][is-static] ... [/is-static][/b] - Содержимое для статических страниц,
-[b][is-short] ... [/is-short][/b] - Содержимое для обычных новостей,
-[b][notfound] ... [/notfound][/b] - В случае отсутствующего запроса,
-[b]{last_viewed}[/b] - Если включено [b]Вести учет последних просмотренных публикаций[/b] добавляет переключатель исключающий уже просмотренные новости.
-[b][last_viewed] ... [/last_viewed][/b] - Содержимое в случае активной настройке выше., 
-[b]{notfound}[/b] - Сообщение отсутствия результатов,
-[b]{search-link}[/b] - Ссылка на расширенный поиск.
+Так как 16.1 привнесла собственные шаблоны то новых тегов нету. 
+Вся прошлая разметка перекочевала в переменную [b]search_result_wrapper[/b]
 
-В шаблоне для дублирования результата новостей нужно использовать тег [b][item] ... [/item][/b]
-Всё между содержимым этого тега будет эквивалентно шаблону новости который будет дублироваться в количестве найденных новостей.</details>
-<details><summary style="color:green;font-weight:500" role="button">[b]Для благодарности[/b]</summary><ul style="margin-bottom: 0;"><li>[b]<span style="color:rgb(127,43,253);">Ю</span>Money[/b]: 4100115063692304</li><li>[b]<span style="color:#FF8C00;">Qiwi</span> nickname[/b]: TERAMOUNE</li><li>[b]<span style="color:#006cb4;">WMZ[/b]</span>: Z990082286464</li></ul></details>
+В ней будут теги:
+<ul><li>{search-result} - Для конкретной разметки ссылок или блоков новостей из поиска.</li>
+<li>[notfound]{notfound}[/notfound] - Для отображения информации об отсутствии результатов поиска.</li>
+<li>{search-link} - Ссылка на раздел поиска.</li>
+<li>{last-viewed} - Элемент [b]checkbox[/b] для переключения отображения в результатах уже просмотренных новостей. (Если включено в настройках скрипта запоминать последние просмотренные новости)</li></ul></details><details><summary style="color:green;font-weight:500" role="button">[b]Для благодарности и мотивации на поддержку[/b]</summary><ul style="margin-bottom: 0;"><li>[b]<span style="color:rgb(127,43,253);">Ю</span>Money[/b]: 4100115063692304</li><li>[b]<span style="color:#FF8C00;">Qiwi</span> nickname[/b]: TERAMOUNE</li><li>[b]<span style="color:#006cb4;">WMZ[/b]</span>: Z990082286464</li></ul></details>
 <p>Другие плагины на <a href="https://github.com/TeraMoune" target="_blank">[b]GitHub[/b]</a></p>]]></notice>
 	<file name="engine/ajax/search.php">
-		<operation action="before">
-			<searchcode><![CDATA[function strip_data($text) {]]></searchcode>
-			<replacecode><![CDATA[$tpl 			= new dle_template( );
-$tpl->dir 		= ROOT_DIR . '/templates/' . $config['skin'];
-define( 'TEMPLATE_DIR', $tpl->dir );
-$tpl->load_template( 'modules/ajax-search.tpl' );
-$item_template 	= array();
-$news_found 	= false;
-preg_match("#\\[item\\](.+?)\\[/item\\]#is", $tpl->copy_template, $item);
-
-if( stripos( $tpl->copy_template, "[xf" ) !== false OR stripos( $tpl->copy_template, "[if" ) !== false ) {
-
-	$xfound 	= true;
-	$xfields 	= xfieldsload();
-
-	if(count($xfields)) {
-		$temp_xf = $xfields;
-		foreach ($temp_xf as $k => $v) {
-			if (stripos($tpl->copy_template, $v[0]) === false) {
-				unset($xfields[$k]);
-			}
-		}
-		unset($temp_xf);
-	}
-		
-} else $xfound = false;]]></replacecode>
-			<enabled>1</enabled>
-		</operation>
-		<operation action="replace">
-			<searchcode><![CDATA[id, short_story, title, date, alt_name, category]]></searchcode>
-			<replacecode><![CDATA[p.id, p.autor, p.short_story, p.title, p.date, p.alt_name, p.category, p.xfields, e.rating, e.vote_num, e.allow_rate]]></replacecode>
-			<enabled>1</enabled>
-		</operation>
-		<operation action="after">
-			<searchcode><![CDATA[$row['title'] = stripslashes($row['title']);]]></searchcode>
-			<replacecode><![CDATA[$row['xfields'] = stripslashes( $row['xfields'] );
-
-$temp = $item[1];
-
-if( $xfound AND count($xfields) ) {
-	$row['xfields_array'] = xfieldsdataload( $row['xfields'] );
-}
-
-$row['cats'] 		= explode( ',', $row['category'] );
-$row['category'] 	= intval( $row['category'] );
-
-$temp = $tpl->if_check($temp);
-		
-if( $xfound AND count($xfields) ) {
-	$xfieldsdata = $row['xfields_array'];
-			
-	foreach ( $xfields as $value ) {
-		$preg_safe_name = preg_quote( $value[0], "'" );
-				
-		if( $value[20] ) {
-				  
-		  $value[20] = explode( ',', $value[20] );
-				  
-		  if( $value[20][0] AND !in_array( $member_id['user_group'], $value[20] ) ) {
-			  $xfieldsdata[$value[0]] = "";
-		  }
-				  
-		}
-			
-		if ( $value[3] == "yesorno" ) {
-					
-		    if( intval($xfieldsdata[$value[0]]) ) {
-				$xfgiven = true;
-				$xfieldsdata[$value[0]] = $lang['xfield_xyes'];
-			} else {
-				$xfgiven = false;
-				$xfieldsdata[$value[0]] = $lang['xfield_xno'];
-			}
-					
-		} else {
-					
-			if( isset($xfieldsdata[$value[0]]) AND $xfieldsdata[$value[0]] ) $xfgiven = true; else $xfgiven = false;
-					
-		}
-				
-		if( !$xfgiven ) {
-			$temp = preg_replace( "'\\[xfgiven_{$preg_safe_name}\\](.*?)\\[/xfgiven_{$preg_safe_name}\\]'is", "", $temp );
-			$temp = str_ireplace( "[xfnotgiven_{$value[0]}]", "", $temp );
-			$temp = str_ireplace( "[/xfnotgiven_{$value[0]}]", "", $temp );
-		} else {
-			$temp = preg_replace( "'\\[xfnotgiven_{$preg_safe_name}\\](.*?)\\[/xfnotgiven_{$preg_safe_name}\\]'is", "", $temp );
-			$temp = str_ireplace( "[xfgiven_{$value[0]}]", "", $temp );
-			$temp = str_ireplace( "[/xfgiven_{$value[0]}]", "", $temp );
-		}
-				
-		if(strpos( $temp, "[ifxfvalue {$value[0]}" ) !== false ) {
-			$temp = preg_replace_callback ( "#\\[ifxfvalue(.+?)\\](.+?)\\[/ifxfvalue\\]#is", "check_xfvalue", $temp );
-		}
-				
-		if ( $value[6] AND !empty( $xfieldsdata[$value[0]] ) ) {
-			$temp_array = explode( ",", $xfieldsdata[$value[0]] );
-			$value3 = array();
-
-			foreach ($temp_array as $value2) {
-
-				$value2 = trim($value2);
-						
-				if($value2) {
-							
-					$value4 = str_replace(array("&#039;", "&quot;", "&amp;", "&#123;", "&#91;", "&#58;", "/"), array("'", '"', "&", "{", "[", ":", "&frasl;"), $value2);
-							
-					if( $value[3] == "datetime" ) {
-							
-						$value2 = strtotime( $value4 );
-							
-						if( !trim($value[24]) ) $value[24] = $config['timestamp_active'];
-								
-						if( $value[25] ) {
-									
-							if($value[26]) $value2 = langdate($value[24], $value2);
-							else $value2 = langdate($value[24], $value2, false, $customlangdate);
-									
-						} else $value2 = date( $value[24], $value2 );
-
-					}
-	
-					if( $config['allow_alt_url'] ) $value3[] = "<a href=\"" . $config['http_home_url'] . "xfsearch/" .$value[0]."/". rawurlencode( dle_strtolower($value4) ) . "/\">" . $value2 . "</a>";
-					else $value3[] = "<a href=\"$PHP_SELF?do=xfsearch&amp;xfname=".$value[0]."&amp;xf=" . rawurlencode( dle_strtolower($value4) ) . "\">" . $value2 . "</a>";
-							
-				}
-
-			}
-					
-			if( empty($value[21]) ) $value[21] = ", ";
-					
-			$xfieldsdata[$value[0]] = implode($value[21], $value3);
-
-			unset($temp_array);
-			unset($value2);
-			unset($value3);
-			unset($value4);
-
-		} elseif ( $value[3] == "datetime" AND !empty($xfieldsdata[$value[0]]) ) {
-
-			$xfieldsdata[$value[0]] = strtotime( str_replace("&#58;", ":", $xfieldsdata[$value[0]]) );
-
-			if( !trim($value[24]) ) $value[24] = $config['timestamp_active'];
-
-			if( $value[25] ) {
-						
-				if($value[26]) $xfieldsdata[$value[0]] = langdate($value[24], $xfieldsdata[$value[0]]);
-				else $xfieldsdata[$value[0]] = langdate($value[24], $xfieldsdata[$value[0]], false, $customlangdate);
-									
-			} else $xfieldsdata[$value[0]] = date( $value[24], $xfieldsdata[$value[0]] );
-					
-					
-		}
-				
-		if ($config['allow_links'] AND $value[3] == "textarea" AND function_exists('replace_links') ) $xfieldsdata[$value[0]] = replace_links ( $xfieldsdata[$value[0]], $replace_links['news'] );
-
-		if($value[3] == "image" AND isset($xfieldsdata[$value[0]]) AND $xfieldsdata[$value[0]] ) {
-					
-			$temp_array = explode('|', $xfieldsdata[$value[0]]);
-						
-			if (count($temp_array) == 1 OR count($temp_array) == 5 ){
-							
-				$temp_alt = '';
-				$temp_value = implode('|', $temp_array );
-							
-			} else {
-							
-				$temp_alt = $temp_array[0];
-				$temp_alt = str_replace( "&amp;#44;", "&#44;", $temp_alt );
-				$temp_alt = str_replace( "&amp;#124;", "&#124;", $temp_alt );
-						
-				unset($temp_array[0]);
-				$temp_value =  implode('|', $temp_array );
-							
-			}
-
-			$path_parts = get_uploaded_image_info($temp_value);
-					
-			if( $value[12] AND $path_parts->thumb ) {
-						
-              	$temp = str_ireplace( "[xfvalue_thumb_url_{$value[0]}]", $path_parts->thumb, $temp );
-				$xfieldsdata[$value[0]] = "<img class=\"xfieldimage {$value[0]}\" src=\"{$path_parts->thumb}\" alt=\"{$temp_alt}\">";
-
-			} else {
-					
-              	$temp = str_ireplace( "[xfvalue_thumb_url_{$value[0]}]", $path_parts->url, $temp );
-				$xfieldsdata[$value[0]] = "<img class=\"xfieldimage {$value[0]}\" src=\"{$path_parts->url}\" alt=\"{$temp_alt}\">";
-
-			}
-					
-          	$temp = str_ireplace( "[xfvalue_image_url_{$value[0]}]", $path_parts->url, $temp );
-         	$temp = str_ireplace( "[xfvalue_image_description_{$value[0]}]", $temp_alt, $temp );
-					
-			if( $value[28] ) {
-						
-				if( !$path_parts->thumb ) $path_parts->thumb = $path_parts->url;
-						
-				$xfields_in_news['[xfvalue_image_url_'.$value[0].']'] = $path_parts->url;
-				$xfields_in_news['[xfvalue_image_description_'.$value[0].']'] = $temp_alt;
-				$xfields_in_news['[xfvalue_thumb_url_'.$value[0].']'] = $path_parts->thumb;
-			}
-
-		}
-				
-		$xfieldsdata[$value[0]] = isset($xfieldsdata[$value[0]]) ? $xfieldsdata[$value[0]] : '';
-				
-		if($value[3] == "image" AND !$xfieldsdata[$value[0]]) {         
-          	$temp = str_ireplace( "[xfvalue_thumb_url_{$value[0]}]", "", $temp );
-          	$temp = str_ireplace( "[xfvalue_image_url_{$value[0]}]", "", $temp );
-          	$temp = str_ireplace( "[xfvalue_image_description_{$value[0]}]", "", $temp );
-		}
-								
-		$temp = preg_replace( "'\\[xfgiven_{$preg_safe_name} image=\"(\d+)\"\\](.*?)\\[/xfgiven_{$preg_safe_name} image=\"(\d+)\"\\]'is", "", $temp );
-		$temp = preg_replace( "'\\[xfnotgiven_{$preg_safe_name} image=\"(\d+)\"\\]'i", "", $temp );
-		$temp = preg_replace( "'\\[/xfnotgiven_{$preg_safe_name} image=\"(\d+)\"\\]'i", "", $temp );	
-								
-      	$temp = str_ireplace( "[xfvalue_{$value[0]}]", $xfieldsdata[$value[0]], $temp );
-
-				
-		if ( preg_match( "#\\[xfvalue_{$preg_safe_name} limit=['\"](.+?)['\"]\\]#i", $temp, $matches ) ) {
-          	$temp = str_ireplace( $matches[0], clear_content($xfieldsdata[$value[0]], $matches[1]), $temp );
-		} 
-
-	}
-}
-
-$short_s = stripslashes($row['short_story']);
-
-if (stripos ( $temp, "image-" ) !== false) {
-
-	$images = array();
-	preg_match_all('/(img|src)=("|\')[^"\'>]+/i', $short_s.$row['xfields'], $media);
-	$data=preg_replace('/(img|src)("|\'|="|=\')(.*)/i',"$3",$media[0]);
-	
-	foreach($data as $url) {
-		$info = pathinfo($url);
-		if (isset($info['extension'])) {
-			if ($info['filename'] == "spoiler-plus" OR $info['filename'] == "spoiler-minus" OR strpos($info['dirname'], 'engine/data/emoticons') !== false) continue;
-			$info['extension'] = strtolower($info['extension']);
-			if (($info['extension'] == 'jpg') || ($info['extension'] == 'jpeg') || ($info['extension'] == 'gif') || ($info['extension'] == 'png') || ($info['extension'] == 'webp')) array_push($images, $url);
-		}
-	}
-	
-	if ( count($images) ) {
-		$i_count=0;
-		foreach($images as $url) {
-			$i_count++;
-			$temp = str_replace( '{image-'.$i_count.'}', $url, $temp );
-			$temp = str_replace( '[image-'.$i_count.']', "", $temp );
-			$temp = str_replace( '[/image-'.$i_count.']', "", $temp );
-			$temp = preg_replace( "#\[not-image-{$i_count}\](.+?)\[/not-image-{$i_count}\]#is", "", $temp );
-		}
-	
-	}
-	
-	$temp = preg_replace( "#\[image-(.+?)\](.+?)\[/image-(.+?)\]#is", "", $temp );
-	$temp = preg_replace( "#\\{image-(.+?)\\}#i", "{THEME}/dleimages/no-poster.webp", $temp );
-	$temp = preg_replace( "#\[not-image-(.+?)\]#i", "", $temp );
-	$temp = preg_replace( "#\[/not-image-(.+?)\]#i", "", $temp );
-	
-}
-
-if ( $config['rating_type'] == "1" ) {  
-  		$temp = preg_replace( "'\\[rating-type-2\\]'", "", $temp );
- 		$temp = preg_replace( "'\\[/rating-type-2\\]'", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-1\\](.*?)\\[/rating-type-1\\]'si", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-3\\](.*?)\\[/rating-type-3\\]'si", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-4\\](.*?)\\[/rating-type-4\\]'si", "", $temp );
-} elseif ( $config['rating_type'] == "2" ) {
-  		$temp = preg_replace( "'\\[rating-type-3\\]'", "", $temp );
- 		$temp = preg_replace( "'\\[/rating-type-3\\]'", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-1\\](.*?)\\[/rating-type-1\\]'si", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-2\\](.*?)\\[/rating-type-2\\]'si", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-4\\](.*?)\\[/rating-type-4\\]'si", "", $temp );  
-} elseif ( $config['rating_type'] == "3" ) {
-  		$temp = preg_replace( "'\\[rating-type-4\\]'", "", $temp );
- 		$temp = preg_replace( "'\\[/rating-type-4\\]'", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-1\\](.*?)\\[/rating-type-1\\]'si", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-2\\](.*?)\\[/rating-type-2\\]'si", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-3\\](.*?)\\[/rating-type-3\\]'si", "", $temp );    
-} else {
-  		$temp = preg_replace( "'\\[rating-type-1\\]'", "", $temp );
- 		$temp = preg_replace( "'\\[/rating-type-1\\]'", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-4\\](.*?)\\[/rating-type-4\\]'si", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-3\\](.*?)\\[/rating-type-3\\]'si", "", $temp );
-  		$temp = preg_replace( "'\\[rating-type-2\\](.*?)\\[/rating-type-2\\]'si", "", $temp );    
-}
-		
-if( $row['allow_rate'] ) {
-			
-	if( $config['short_rating'] AND $user_group[$member_id['user_group']]['allow_rating'] ) {
-				
-		$temp = str_ireplace( '{rating}', ShowRating( $row['id'], $row['rating'], $row['vote_num'], 0 ), $temp );
-		
-      	if ( $config['rating_type'] ) {
-					
-          	$temp = str_ireplace( '[rating-plus]', "", $temp );
-          	$temp = str_ireplace( '[/rating-plus]', "", $temp );
-          
-			if ( $config['rating_type'] == "2" OR $config['rating_type'] == "3" ) {
-             
-          		$temp = str_ireplace( '[rating-minus]', "", $temp );
-          		$temp = str_ireplace( '[/rating-minus]', "", $temp );              
-						
-			} else {
-              	$temp = preg_replace( "'\\[rating-minus\\](.*?)\\[/rating-minus\\]'si", "", $temp );    
-			}
-					
-		} else {
-          	$temp = preg_replace( "'\\[rating-plus\\](.*?)\\[/rating-plus\\]'si", "", $temp );
-         	$temp = preg_replace( "'\\[rating-minus\\](.*?)\\[/rating-minus\\]'si", "", $temp );
-		}
-				
-	} else {
-
-		$temp = str_ireplace( '{rating}', ShowRating( $row['id'], $row['rating'], $row['vote_num'], 0 ), $temp );    
-       	$temp = preg_replace( "'\\[rating-plus\\](.*?)\\[/rating-plus\\]'si", "", $temp );
-       	$temp = preg_replace( "'\\[rating-minus\\](.*?)\\[/rating-minus\\]'si", "", $temp );
-				
-	}
-			
-	if( $row['vote_num'] ) $ratingscore = str_replace( ',', '.', round( ($row['rating'] / $row['vote_num']), 1 ) );
-	else $ratingscore = 0;
-
-  	$temp 		= str_ireplace( '{ratingscore}', $ratingscore, $temp );
-	$dislikes 	= ($row['vote_num'] - $row['rating'])/2;
-	$likes 		= $row['vote_num'] - $dislikes;
-
-	$temp 		= str_ireplace( '{likes}', "<span id=\"likes-id-".$row['id']."\">".$likes."</span>", $temp );
-  	$temp 		= str_ireplace( '{dislikes}', "<span id=\"dislikes-id-".$row['id']."\">".$dislikes."</span>", $temp );
-  	$temp 		= str_ireplace( '{vote-num}', "<span id=\"vote-num-id-".$row['id']."\">".$row['vote_num']."</span>", $temp );
-  	$temp 		= str_ireplace( '[rating]', "", $temp );
-  	$temp 		= str_ireplace( '[/rating]', "", $temp );
-  
-} else {
-  
-	$temp = str_ireplace( '{rating}', "", $temp );
-  	$temp = str_ireplace( '{vote-num}', "", $temp );
-  	$temp = str_ireplace( '{likes}', "", $temp );
-  	$temp = str_ireplace( '{dislikes}', "", $temp );
-  	$temp = str_ireplace( '{ratingscore}', "", $temp );  
-  	
-  	$temp = preg_replace( "'\\[rating\\](.*?)\\[/rating\\]'si", "", $temp );
-  	$temp = preg_replace( "'\\[rating-plus\\](.*?)\\[/rating-plus\\]'si", "", $temp );
-  	$temp = preg_replace( "'\\[rating-minus\\](.*?)\\[/rating-minus\\]'si", "", $temp );
-
-}]]></replacecode>
-			<enabled>1</enabled>
-		</operation>
-		<operation action="replace">
-			<searchcode><![CDATA[$buffer .= "<a href=\"" . $full_link . "\"><span class=\"searchheading\">" . stripslashes( $title ) . "</span>";
-
-$buffer .= "<span>".$description."</span></a>";]]></searchcode>
-			<replacecode><![CDATA[$temp 				= str_replace( '[full-link]', "<a href=\"" . $full_link . "\" data-suggest=\"".$title."\">", $temp );
-$temp 				= str_replace( '[/full-link]', "</a>", $temp );		
-$temp 				= preg_replace( "#\[is-static\](.*?)\[/is-static\]#is", "", $temp );
-$temp 				= preg_replace( "#\[is-short\]|\[/is-short\]#is", "", $temp );
-$temp 				= preg_replace( "#\[notfound\](.*?)\[/notfound\]#is", "", $temp );	
-$temp 				= str_replace( '{full-link}', $full_link, $temp );
-$temp 				= str_replace( '{title}', $title, $temp );
-$temp 				= str_replace( '{short-story}', $description, $temp );
-$item_template[] 	= $temp;]]></replacecode>
-			<enabled>1</enabled>
-		</operation>
-		<operation action="replace">
-			<searchcode><![CDATA[$buffer .= "<a href=\"" . $full_link . "\"><span class=\"searchheading\">" . stripslashes( $row['descr'] ) . "</span></a>";]]></searchcode>
-			<replacecode><![CDATA[$row['descr'] = stripslashes( $row['descr'] );
-
-$temp 				= $item[1];
-$temp 				= str_replace( '[full-link]', "<a href=\"" . $full_link . "\" data-suggest=\"".$row['descr']."\">", $temp );
-$temp 				= str_replace( '[/full-link]', "</a>", $temp );
-$temp 				= preg_replace( "#\[is-static\]|\[/is-static\]#is", "", $temp );
-$temp 				= preg_replace( "#\[is-short\](.*?)\[/is-short\]#is", "", $temp );
-$temp 				= preg_replace( "#\[notfound\](.*?)\[/notfound\]#is", "", $temp );
-$temp 				= str_replace( '{full-link}', $full_link, $temp );
-$temp 				= str_replace( '{title}', $row['descr'], $temp );
-$temp 				= str_replace( '{short-story}', $row['metadescr'], $temp );
-$item_template[] 	= $temp;]]></replacecode>
-			<enabled>1</enabled>
-		</operation>
-		<operation action="replace">
-			<searchcode><![CDATA[if ( !$buffer ) $buffer .= "<span class=\"notfound\">{$lang['related_not_found']}</span>";]]></searchcode>
-			<replacecode><![CDATA[if ( !$news_found ) {
-  	$tpl->set_block( "'\\[notfound\\]|\\[/notfound\\]'si", "" );
-  	$tpl->set_block( "'\\[found\\](.*?)\\[/found\\]'si", "" );
-  	$tpl->set( '{notfound}', $lang['related_not_found'] );
-} else {
-   	$tpl->set_block( "'\\[notfound\\](.*?)\\[/notfound\\]'si", "" );
-  	$tpl->set_block( "'\\[found\\]|\\[/found\\]'si", "" );
-  	$tpl->set( '{notfound}', "" ); 
-}]]></replacecode>
-			<enabled>1</enabled>
-		</operation>
-		<operation action="after">
-			<searchcode><![CDATA[while($row = $db->get_row()){]]></searchcode>
-			<replacecode><![CDATA[$news_found = true;]]></replacecode>
-			<enabled>1</enabled>
-		</operation>
-		<operation action="replace">
-			<searchcode><![CDATA[if( dle_strlen( $row['short_story'], $config['charset'] ) > 150 ) $description = dle_substr( $row['short_story'], 0, 150, $config['charset'] ) . " ...";
-else $description = $row['short_story'];]]></searchcode>
-			<replacecode><![CDATA[if( dle_strlen( $row['short_story'], $config['charset'] ) > 100 ) $description = dle_substr( $row['short_story'], 0, 100, $config['charset'] ) . " ...";
-else $description = $row['short_story'];]]></replacecode>
-			<enabled>1</enabled>
-		</operation>
 		<operation action="after">
 			<searchcode><![CDATA[} else $where_category = "";]]></searchcode>
 			<replacecode><![CDATA[if( $_COOKIE['search_last_viewed'] AND $_COOKIE['viewed_ids'] ) {
@@ -459,66 +51,57 @@ else $description = $row['short_story'];]]></replacecode>
         $viewed = " AND p.id NOT IN ('" . implode("','", $temp_array) . "')";
     }
   	
-} else $viewed = '';]]></replacecode>
-			<enabled>1</enabled>
-		</operation>
-		<operation action="replace">
-			<searchcode><![CDATA[$where_category.]]></searchcode>
-			<replacecode><![CDATA[$where_category.$viewed.]]></replacecode>
-			<enabled>1</enabled>
-		</operation>
-		<operation action="replace">
-			<searchcode><![CDATA[if ( !$buffer ) {]]></searchcode>
-			<replacecode><![CDATA[if ( !$news_found ) {]]></replacecode>
-			<enabled>1</enabled>
-		</operation>
-		<operation action="replace">
-			<searchcode><![CDATA[$buffer .= '<span class="seperator"><a href="'.$config['http_home_url'].'?do=search&amp;mode=advanced&amp;subaction=search&amp;story='.$query.'">'.$lang['s_ffullstart'].'</a></span><br class="break" />';
+} else $viewed = '';
 
-echo $buffer;]]></searchcode>
-			<replacecode><![CDATA[$tpl->set( '{search-link}', '<a href="'.$config['http_home_url'].'?do=search&amp;mode=advanced&amp;subaction=search&amp;story='.$query.'" class="extended-search">'.$lang['s_ffullstart'].'</a>' );
-
+$where_category = $where_category.$viewed;]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="replace">
+			<searchcode><![CDATA[echo $tpl->result['content'].$link_query;]]></searchcode>
+			<replacecode><![CDATA[echo json_encode([
+	"status" 		=> true,
+	"content" 		=> $tpl->result['content'],
+	"search_link" 	=> $link_query,
+	"last_viewed" 	=> $last_viewed
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="before">
+			<searchcode><![CDATA[if ( $found_result ) {]]></searchcode>
+			<replacecode><![CDATA[$last_viewed = '';
 if( $config['last_viewed'] ) {
-
-  	$tpl->set_block( "'\\[last_viewed\\]|\\[/last_viewed\\]'si", "" );
-  
-  	if( $_COOKIE['search_last_viewed'] ) $checked = ' checked';
-      
-    $tpl->set('{last_viewed}', '<div class="lastviewed_toggle"><input onchange="Search.changeSearch(this);" id="notviewed" type="checkbox" value="1"'.$checked.'><label for="notviewed">Исключить просмотренное</label></div>');  
-
-} else {
-
-  	$tpl->set('{last_viewed}', '');
-  	$tpl->set_block( "'\\[last_viewed\\](.*?)\\[/last_viewed\\]'si", "" );
-
-}
-
-$res = implode($item_template);
-
-if( strpos( $res, "[xf" ) !== false ) {
-	$res = preg_replace( "'\\[xfnotgiven_(.*?)\\](.*?)\\[/xfnotgiven_(.*?)\\]'is", "", $res );
-	$res = preg_replace( "'\\[xfgiven_(.*?)\\](.*?)\\[/xfgiven_(.*?)\\]'is", "", $res );
-	$res = preg_replace( "'\\[xfvalue_(.*?)\\]'i", "", $res );
-}
+		
+	if( $_COOKIE['search_last_viewed'] ) $checked = ' checked';
+			
+	$last_viewed = "<div class=\"lastviewed_toggle\"><input onchange=\"Search.changeSearch(this);\" id=\"notviewed\" type=\"checkbox\" value=\"1\"{$checked}><label for=\"notviewed\">Исключить просмотренное</label></div>";  
 	
-if( strpos( $res, "[ifxfvalue" ) !== false ) {
-	$res = preg_replace( "#\\[ifxfvalue(.+?)\\](.+?)\\[/ifxfvalue\\]#is", "", $res );
-}
-
-if( $item[0] ) {
-  	$tpl->set_block( "'\\[item\\](.*?)\\[/item\\]'si", $res );
-}
-
-$tpl->compile( 'result' );
-
-$tpl->result['result'] = str_replace( '{THEME}', $config['http_home_url'] . 'templates/' . $config['skin'], $tpl->result['result'] );
-
-echo $tpl->result['result'];]]></replacecode>
+}]]></replacecode>
 			<enabled>1</enabled>
 		</operation>
 		<operation action="replace">
-			<searchcode><![CDATA[id, name, descr]]></searchcode>
-			<replacecode><![CDATA[id, name, descr, metadescr]]></replacecode>
+			<searchcode><![CDATA[echo $not_found . $link_query;]]></searchcode>
+			<replacecode><![CDATA[echo json_encode([
+	"status" 		=> false,
+	"content" 		=> "",
+	"search_link" 	=> $link_query,
+	"last_viewed" 	=> $last_viewed,
+	"error" 		=> $not_found
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="replace">
+			<searchcode><![CDATA[echo $buffer . $link_query;]]></searchcode>
+			<replacecode><![CDATA[echo json_encode([
+	"status" 		=> true,
+	"content" 		=> $buffer,
+	"search_link" 	=> $link_query,
+	"last_viewed" 	=> $last_viewed
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="replace">
+			<searchcode><![CDATA[$not_found =  "<span class=\"notfound\">{$lang['related_not_found']}</span>";]]></searchcode>
+			<replacecode><![CDATA[$not_found =  $lang['related_not_found'];]]></replacecode>
 			<enabled>1</enabled>
 		</operation>
 	</file>
@@ -546,7 +129,7 @@ HTML;
 	$onload_scripts[] = "Search.init(dle_min_search);";
 
 }]]></replacecode>
-			<enabled>0</enabled>
+			<enabled>1</enabled>
 		</operation>
 	</file>
 </dleplugin>
